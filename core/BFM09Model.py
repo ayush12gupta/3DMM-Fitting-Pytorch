@@ -60,13 +60,13 @@ class BFM09ReconModel(BaseReconModel):
 
     def split_coeffs(self, coeffs):
         id_coeff = coeffs[:, :80]  # identity(shape) coeff of dim 80
-        exp_coeff = coeffs[:, 80:144]  # expression coeff of dim 64
-        tex_coeff = coeffs[:, 144:224]  # texture(albedo) coeff of dim 80
+        exp_coeff = coeffs[:, 80:112]  # expression coeff of dim 64
+        tex_coeff = coeffs[:, 112:192]  # texture(albedo) coeff of dim 80
         # ruler angles(x,y,z) for rotation of dim 3
-        angles = coeffs[:, 224:227]
+        angles = coeffs[:, 192:195]
         # lighting coeff for 3 channel SH function of dim 27
-        gamma = coeffs[:, 227:254]
-        translation = coeffs[:, 254:]  # translation coeff of dim 3
+        gamma = coeffs[:, 195:222]
+        translation = coeffs[:, 222:]  # translation coeff of dim 3
 
         return id_coeff, exp_coeff, tex_coeff, angles, gamma, translation
 
@@ -94,7 +94,7 @@ class BFM09ReconModel(BaseReconModel):
             [lms_proj[:, :, 0], self.img_size-lms_proj[:, :, 1]], dim=2)
         if render:
             face_texture = self.get_color(tex_coeff)
-            face_norm = self.compute_norm(vs, self.tri, self.point_buf)
+            face_norm = self.compute_norm(vs, self.tri, None)  #self.point_buf)
             face_norm_r = face_norm.bmm(rotation)
             face_color = self.add_illumination(
                 face_texture, face_norm_r, gamma)
@@ -140,4 +140,4 @@ class BFM09ReconModel(BaseReconModel):
     def init_coeff_dims(self):
         self.id_dims = 80
         self.tex_dims = 80
-        self.exp_dims = 64
+        self.exp_dims = 32

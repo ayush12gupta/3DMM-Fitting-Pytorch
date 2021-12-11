@@ -103,7 +103,7 @@ class BaseReconModel(nn.Module):
         empty = torch.zeros((face_norm.size(0), 1, 3),
                             dtype=face_norm.dtype, device=face_norm.device)
         face_norm = torch.cat((face_norm, empty), 1)
-        v_norm = face_norm[:, point_id, :].sum(2)
+        v_norm = face_norm[:, :, :].sum(2)
         v_norm = v_norm / v_norm.norm(dim=2).unsqueeze(2)
 
         return v_norm
