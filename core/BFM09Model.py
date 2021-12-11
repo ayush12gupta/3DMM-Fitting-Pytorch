@@ -20,11 +20,14 @@ class BFM09ReconModel(BaseReconModel):
     def __init__(self, model_dict, **kargs):
         super(BFM09ReconModel, self).__init__(**kargs)
 
-        self.skinmask = torch.tensor(
-            model_dict['skinmask'], requires_grad=False, device=self.device)
+        # self.skinmask = torch.tensor(
+        #     model_dict['skinmask'], requires_grad=False, device=self.device)
 
         self.kp_inds = torch.tensor(
             model_dict['keypoints']-1).squeeze().long().to(self.device)
+        
+        self.kp_idx = torch.tensor(model_dict['keypoint_index'],
+                                dtype=torch.int64, requires_grad=False)
 
         self.meanshape = torch.tensor(model_dict['meanshape'],
                                       dtype=torch.float32, requires_grad=False,
