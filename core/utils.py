@@ -27,6 +27,14 @@ def get_lm_weights(device):
     w = torch.ones(68).to(device)
     w[28:31] = 10
     w[48:68] = 10
+    w[:7] = 0
+    w[9:17] = 0
+    w[18] = 0
+    w[20] = 0
+    w[23] = 0
+    w[25] = 0
+    w[32] = 0
+    w[34] = 0
     norm_w = w / w.sum()
     return norm_w
 

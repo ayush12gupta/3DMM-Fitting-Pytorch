@@ -45,7 +45,8 @@ def fit(args):
     resized_face_img = cv2.resize(face_img, (args.tar_size, args.tar_size))
 
     lms = fa.get_landmarks_from_image(resized_face_img)[0]
-    lms = lms[:, :2][None, ...]
+    kp_idx = recon_model.kp_idx[0]
+    lms = lms[kp_idx, :2][None, ...]
     lms = torch.tensor(lms, dtype=torch.float32, device=args.device)
     img_tensor = torch.tensor(
         resized_face_img[None, ...], dtype=torch.float32, device=args.device)
@@ -61,7 +62,7 @@ def fit(args):
         rigid_optimizer.zero_grad()
         pred_dict = recon_model(recon_model.get_packed_tensors(), render=False)
         lm_loss_val = losses.lm_loss(
-            pred_dict['lms_proj'], lms, lm_weights, img_size=args.tar_size)
+            pred_dict['lms_proj'][:,kp_idx,:], lms, lm_weights[kp_idx], img_size=args.tar_size)
         total_loss = args.lm_loss_w * lm_loss_val
         total_loss.backward()
         rigid_optimizer.step()
@@ -77,7 +78,7 @@ def fit(args):
 
         pred_dict = recon_model(recon_model.get_packed_tensors(), render=True)
         rendered_img = pred_dict['rendered_img']
-        lms_proj = pred_dict['lms_proj']
+        lms_proj = pred_dict['lms_proj'][:,kp_idx,:]
         face_texture = pred_dict['face_texture']
 
         mask = rendered_img[:, :, :, 3].detach()
@@ -85,19 +86,18 @@ def fit(args):
         photo_loss_val = losses.photo_loss(
             rendered_img[:, :, :, :3], img_tensor, mask > 0)
 
-        lm_loss_val = losses.lm_loss(lms_proj, lms, lm_weights,
+        lm_loss_val = losses.lm_loss(lms_proj, lms, lm_weights[kp_idx],
                                      img_size=args.tar_size)
         id_reg_loss = losses.get_l2(recon_model.get_id_tensor())
         exp_reg_loss = losses.get_l2(recon_model.get_exp_tensor())
         tex_reg_loss = losses.get_l2(recon_model.get_tex_tensor())
-        tex_loss_val = losses.reflectance_loss(
-            face_texture, recon_model.get_skinmask())
+        # tex_loss_val = losses.reflectance_loss(
+        #     face_texture, recon_model.get_skinmask())
 
         loss = lm_loss_val*args.lm_loss_w + \
             id_reg_loss*args.id_reg_w + \
             exp_reg_loss*args.exp_reg_w + \
             tex_reg_loss*args.tex_reg_w + \
-            tex_loss_val*args.tex_w + \
             photo_loss_val*args.rgb_loss_w
 
         loss.backward()
@@ -106,7 +106,7 @@ def fit(args):
     loss_str = ''
     loss_str += 'lm_loss: %f\t' % lm_loss_val.detach().cpu().numpy()
     loss_str += 'photo_loss: %f\t' % photo_loss_val.detach().cpu().numpy()
-    loss_str += 'tex_loss: %f\t' % tex_loss_val.detach().cpu().numpy()
+    # loss_str += 'tex_loss: %f\t' % tex_loss_val.detach().cpu().numpy()
     loss_str += 'id_reg_loss: %f\t' % id_reg_loss.detach().cpu().numpy()
     loss_str += 'exp_reg_loss: %f\t' % exp_reg_loss.detach().cpu().numpy()
     loss_str += 'tex_reg_loss: %f\t' % tex_reg_loss.detach().cpu().numpy()
