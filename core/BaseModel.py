@@ -92,20 +92,12 @@ class BaseReconModel(nn.Module):
 
     def compute_norm(self, vs, tri, point_buf):
 
-        face_id = tri
-        point_id = point_buf
-        v1 = vs[:, face_id[:, 0], :]
-        v2 = vs[:, face_id[:, 1], :]
-        v3 = vs[:, face_id[:, 2], :]
-        e1 = v1 - v2
-        e2 = v2 - v3
-        face_norm = e1.cross(e2)
-        empty = torch.zeros((face_norm.size(0), 1, 3),
-                            dtype=face_norm.dtype, device=face_norm.device)
-        face_norm = torch.cat((face_norm, empty), 1)
-        v_norm = face_norm[:, :, :].sum(2)
-        v_norm = v_norm / v_norm.norm(dim=2).unsqueeze(2)
-
+        vert = list(np.array(vs.detach().cpu()[0]))
+        tri = np.array(tri.detach().cpu())
+        face_norm = np.array(eos.render.compute_face_normals(vert, tri))
+        v_norm = np.array(eos.render.compute_vertex_normals(vert, tri, face_norm))
+        v_norm = np.expand_dims(v_norm, 0)
+        v_norm = torch.tensor(v_norm, dtype=torch.float32, requires_grad=False, device=self.device)
         return v_norm
 
     def project_vs(self, vs):
