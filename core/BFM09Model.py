@@ -53,9 +53,9 @@ class BFM09ReconModel(BaseReconModel):
                                 dtype=torch.int64, requires_grad=False,
                                 device=self.device)
 
-        self.point_buf = torch.tensor(model_dict['point_buf']-1,
-                                      dtype=torch.int64, requires_grad=False,
-                                      device=self.device)
+        # self.point_buf = torch.tensor(model_dict['point_buf']-1,
+        #                               dtype=torch.int64, requires_grad=False,
+        #                               device=self.device)
 
     def get_lms(self, vs):
         lms = vs[:, self.kp_inds, :]

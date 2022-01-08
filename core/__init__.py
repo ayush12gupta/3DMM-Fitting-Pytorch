@@ -4,7 +4,7 @@ from scipy.io import loadmat
 
 def get_recon_model(model='bfm09', **kargs):
     if model == 'bfm09':
-        model_path = 'BFM/BFM09_model_info.mat'
+        model_path = 'BFM/4DFM_model_info.mat'
         model_dict = loadmat(model_path)
         recon_model = BFM09ReconModel(model_dict, **kargs)
         return recon_model

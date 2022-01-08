@@ -13,7 +13,7 @@ from pytorch3d.renderer import (
     TexturesVertex,
     blending
 )
-
+import eos
 
 class BaseReconModel(nn.Module):
     def __init__(self, batch_size=1,
