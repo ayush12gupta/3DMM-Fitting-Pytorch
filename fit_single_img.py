@@ -79,7 +79,7 @@ def fit(args):
         pred_dict = recon_model(recon_model.get_packed_tensors(), render=True)
         rendered_img = pred_dict['rendered_img']
         lms_proj = pred_dict['lms_proj'][:,kp_idx,:]
-        face_texture = pred_dict['face_texture']
+        # face_texture = pred_dict['face_texture']
 
         mask = rendered_img[:, :, :, 3].detach()
 
@@ -90,14 +90,13 @@ def fit(args):
                                      img_size=args.tar_size)
         id_reg_loss = losses.get_l2(recon_model.get_id_tensor())
         exp_reg_loss = losses.get_l2(recon_model.get_exp_tensor())
-        tex_reg_loss = losses.get_l2(recon_model.get_tex_tensor())
+        # tex_reg_loss = losses.get_l2(recon_model.get_tex_tensor())
         # tex_loss_val = losses.reflectance_loss(
         #     face_texture, recon_model.get_skinmask())
 
         loss = lm_loss_val*args.lm_loss_w + \
             id_reg_loss*args.id_reg_w + \
             exp_reg_loss*args.exp_reg_w + \
-            tex_reg_loss*args.tex_reg_w + \
             photo_loss_val*args.rgb_loss_w
 
         loss.backward()
@@ -109,7 +108,7 @@ def fit(args):
     # loss_str += 'tex_loss: %f\t' % tex_loss_val.detach().cpu().numpy()
     loss_str += 'id_reg_loss: %f\t' % id_reg_loss.detach().cpu().numpy()
     loss_str += 'exp_reg_loss: %f\t' % exp_reg_loss.detach().cpu().numpy()
-    loss_str += 'tex_reg_loss: %f\t' % tex_reg_loss.detach().cpu().numpy()
+    # loss_str += 'tex_reg_loss: %f\t' % tex_reg_loss.detach().cpu().numpy()
     print('done non rigid fitting.', loss_str)
 
     with torch.no_grad():
@@ -145,10 +144,10 @@ def fit(args):
             args.res_folder, basename+'_mesh.obj')
         vs = pred_dict['vs'].cpu().numpy().squeeze()
         tri = pred_dict['tri'].cpu().numpy().squeeze()
-        color = pred_dict['color'].cpu().numpy().squeeze()
-        utils.save_obj(out_obj_path, vs, tri+1, color)
+        # color = pred_dict['color'].cpu().numpy().squeeze()
+        # utils.save_obj(out_obj_path, vs, tri+1, color)
 
-        print('composed image is saved at %s' % args.res_folder)
+        # print('composed image is saved at %s' % args.res_folder)
 
 
 if __name__ == '__main__':

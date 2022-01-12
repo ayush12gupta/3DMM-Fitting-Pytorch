@@ -1,4 +1,5 @@
 import torch
+import cv2
 import torch.nn as nn
 import numpy as np
 from pytorch3d.structures import Meshes
@@ -12,7 +13,8 @@ from pytorch3d.renderer import (
     MeshRasterizer,
     SoftPhongShader,
     TexturesVertex,
-    blending
+    blending,
+    Textures
 )
 
 
@@ -52,10 +54,15 @@ class BFM09ReconModel(BaseReconModel):
         self.tri = torch.tensor(model_dict['tri']-1,
                                 dtype=torch.int64, requires_grad=False,
                                 device=self.device)
+        
+        im = cv2.cvtColor(cv2.imread('/content/4dfm_mean_with_uv.texture.png'), cv2.COLOR_BGR2RGB)
+        self.im = torch.tensor(im[None, ...], 
+                              dtype=torch.float32, requires_grad=False,
+                              device=self.device)
 
-        # self.point_buf = torch.tensor(model_dict['point_buf']-1,
-        #                               dtype=torch.int64, requires_grad=False,
-        #                               device=self.device)
+        self.verts_uvs = torch.tensor(model_dict['verts_uvs'],
+                                    dtype=torch.float32, requires_grad=False,
+                                    device=self.device)
 
     def get_lms(self, vs):
         lms = vs[:, self.kp_inds, :]
@@ -96,24 +103,29 @@ class BFM09ReconModel(BaseReconModel):
         lms_proj = torch.stack(
             [lms_proj[:, :, 0], self.img_size-lms_proj[:, :, 1]], dim=2)
         if render:
-            face_texture = self.get_color(tex_coeff)
-            face_norm = self.compute_norm(vs, self.tri, None)  #self.point_buf)
-            face_norm_r = face_norm.bmm(rotation)
-            face_color = self.add_illumination(
-                face_texture, face_norm_r, gamma)
-            face_color_tv = TexturesVertex(face_color)
-
+            # face_texture = self.get_color(tex_coeff)
+            # face_norm = self.compute_norm(vs, self.tri, None)  #self.point_buf)
+            # face_norm_r = face_norm.bmm(rotation)
+            # face_color = self.add_illumination(
+            #     face_texture, face_norm_r, gamma)
+            # face_color_tv = TexturesVertex(face_color)
+            # # print("Vs ", vs_t)
+            # mesh = Meshes(vs_t, self.tri.repeat(
+            #     batch_num, 1, 1), face_color_tv)
+            tex = Textures(verts_uvs=self.verts_uvs, faces_uvs=self.tri.repeat(
+                batch_num, 1, 1), maps=self.im)
             mesh = Meshes(vs_t, self.tri.repeat(
-                batch_num, 1, 1), face_color_tv)
+                batch_num, 1, 1), tex)
+            # print(mesh)
             rendered_img = self.renderer(mesh)
             rendered_img = torch.clamp(rendered_img, 0, 255)
 
             return {'rendered_img': rendered_img,
                     'lms_proj': lms_proj,
-                    'face_texture': face_texture,
+                    # 'face_texture': face_texture,
+                    # 'color': face_color,
                     'vs': vs_t,
-                    'tri': self.tri,
-                    'color': face_color}
+                    'tri': self.tri}
         else:
             return {'lms_proj': lms_proj}
 
