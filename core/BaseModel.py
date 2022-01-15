@@ -91,7 +91,6 @@ class BaseReconModel(nn.Module):
         return renderer
 
     def compute_norm(self, vs, tri, point_buf):
-
         vert = list(np.array(vs.detach().cpu()[0]))
         tri = np.array(tri.detach().cpu())
         face_norm = np.array(eos.render.compute_face_normals(vert, tri))

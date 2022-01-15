@@ -9,7 +9,7 @@ class BaseOptions():
         self.initialized = False
 
     def initialize(self):
-        self.parser.add_argument('--tar_size', type=int, default=256,
+        self.parser.add_argument('--tar_size', type=int, default=512,
                                  help='size for rendering window. We use a square window.')
         self.parser.add_argument('--padding_ratio', type=float, default=0.3,
                                  help='enlarge the face detection bbox by a margin.')
@@ -46,8 +46,6 @@ class BaseOptions():
                                  help='weight for texture reflectance loss.')
         self.parser.add_argument('--cache_folder', type=str, default='fitting_cache',
                                  help='path for the cache folder')
-        self.parser.add_argument('--data', type=str,
-                                 help='path for the dataset folder')
         self.parser.add_argument('--nframes_shape', type=int, default=16,
                                  help='number of frames used to estimate shape coefficient in video fitting')
         self.parser.add_argument('--num_workers', type=int, default=2,
@@ -77,8 +75,8 @@ class BaseOptions():
 class ImageFittingOptions(BaseOptions):
     def initialize(self):
         BaseOptions.initialize(self)
-        self.parser.add_argument('--img_path', type=str, required=True,
-                                 help='path for the image')
+        self.parser.add_argument('--data', type=str, required=True,
+                                 help='path for the training dataset')
         self.parser.add_argument('--gpu', type=int, default=0,
                                  help='gpu device')
 
