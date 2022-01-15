@@ -22,9 +22,6 @@ class BFM09ReconModel(BaseReconModel):
     def __init__(self, model_dict, **kargs):
         super(BFM09ReconModel, self).__init__(**kargs)
 
-        # self.skinmask = torch.tensor(
-        #     model_dict['skinmask'], requires_grad=False, device=self.device)
-
         self.kp_inds = torch.tensor(
             model_dict['keypoints']-1).squeeze().long().to(self.device)
         
@@ -103,27 +100,24 @@ class BFM09ReconModel(BaseReconModel):
         lms_proj = torch.stack(
             [lms_proj[:, :, 0], self.img_size-lms_proj[:, :, 1]], dim=2)
         if render:
-            # face_texture = self.get_color(tex_coeff)
-            # face_norm = self.compute_norm(vs, self.tri, None)  #self.point_buf)
-            # face_norm_r = face_norm.bmm(rotation)
-            # face_color = self.add_illumination(
-            #     face_texture, face_norm_r, gamma)
-            # face_color_tv = TexturesVertex(face_color)
-            # # print("Vs ", vs_t)
-            # mesh = Meshes(vs_t, self.tri.repeat(
-            #     batch_num, 1, 1), face_color_tv)
-            tex = Textures(verts_uvs=self.verts_uvs, faces_uvs=self.tri.repeat(
-                batch_num, 1, 1), maps=self.im)
+            face_texture = self.get_color(tex_coeff)
+            face_norm = self.compute_norm(vs, self.tri, None)  #self.point_buf)
+            face_norm_r = face_norm.bmm(rotation)
+            face_color = self.add_illumination(
+                face_texture, face_norm_r, gamma)
+            face_color_tv = TexturesVertex(face_color)
             mesh = Meshes(vs_t, self.tri.repeat(
-                batch_num, 1, 1), tex)
+                batch_num, 1, 1), face_color_tv)
+            # tex = Textures(verts_uvs=self.verts_uvs, faces_uvs=self.tri.repeat(
+            #     batch_num, 1, 1), maps=self.im)
+            # mesh = Meshes(vs_t, self.tri.repeat(
+            #     batch_num, 1, 1), tex)
             # print(mesh)
             rendered_img = self.renderer(mesh)
             rendered_img = torch.clamp(rendered_img, 0, 255)
 
             return {'rendered_img': rendered_img,
                     'lms_proj': lms_proj,
-                    # 'face_texture': face_texture,
-                    # 'color': face_color,
                     'vs': vs_t,
                     'tri': self.tri}
         else:

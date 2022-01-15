@@ -7,6 +7,7 @@ from core import get_recon_model
 import os
 import torch
 import core.utils as utils
+from core.dataset import ImageFolderDataset
 from tqdm import tqdm
 import core.losses as losses
 
@@ -71,7 +72,7 @@ def fit(args):
     print('start non-rigid fitting')
     nonrigid_optimizer = torch.optim.Adam(
         [recon_model.get_id_tensor(), recon_model.get_exp_tensor(),
-         recon_model.get_gamma_tensor(), recon_model.get_tex_tensor(),
+         recon_model.get_gamma_tensor(),
          recon_model.get_rot_tensor(), recon_model.get_trans_tensor()], lr=args.nrf_lr)
     for i in tqdm(range(args.first_nrf_iters)):
         nonrigid_optimizer.zero_grad()

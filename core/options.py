@@ -46,8 +46,14 @@ class BaseOptions():
                                  help='weight for texture reflectance loss.')
         self.parser.add_argument('--cache_folder', type=str, default='fitting_cache',
                                  help='path for the cache folder')
+        self.parser.add_argument('--data', type=str,
+                                 help='path for the dataset folder')
         self.parser.add_argument('--nframes_shape', type=int, default=16,
                                  help='number of frames used to estimate shape coefficient in video fitting')
+        self.parser.add_argument('--num_workers', type=int, default=2,
+                                 help='number of workers in dataloder')
+        self.parser.add_argument('--train_batch', type=int, default=8,
+                                 help='training batch size in dataloder')
         self.parser.add_argument('--res_folder', type=str, required=True,
                                  help='output path for the image')
 
