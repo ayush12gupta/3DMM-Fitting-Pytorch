@@ -19,7 +19,7 @@ def train(train_loader, model, recon_model, optimizer, device):
     lm_weights = utils.get_lm_weights(device)
     for batch_idx, (raw_imgs, ldmks) in enumerate(train_loader):
         raw_imgs = (raw_imgs.to(device).to(torch.float32) / 127.5 - 1)
-        ldmks = torch.tensor(ldmks, dtype=torch.float32, device=device)
+        ldmks = ldmks.to(device).to(torch.float32)
 
         coeffs = model(raw_imgs)
         pred_dict = recon_model(coeffs, render=True)
@@ -58,7 +58,7 @@ def fit(args):
     device = torch.device('cuda', 0)
     recon_model = get_recon_model(model=args.recon_model,
                                   device=args.device,
-                                  batch_size=1,
+                                  batch_size=args.train_batch,
                                   img_size=args.tar_size)
 
     dataset = ImageFolderDataset(args.data)

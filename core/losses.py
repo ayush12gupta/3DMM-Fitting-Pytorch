@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 def photo_loss(pred_img, gt_img, img_mask):
     pred_img = pred_img.float()
+    gt_img = gt_img.permute(0, 2, 3, 1)
     loss = torch.sqrt(torch.sum(torch.square(
         pred_img - gt_img), 3))*img_mask/255
     loss = torch.sum(loss, dim=(1, 2)) / torch.sum(img_mask, dim=(1, 2))

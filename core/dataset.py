@@ -4,6 +4,7 @@ import zipfile
 import PIL.Image
 import json
 import torch
+import pyspng
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self,
@@ -200,11 +201,12 @@ class ImageFolderDataset(Dataset):
         return image
     
     def _load_raw_ldmks(self, raw_idx):
-        fname = self._image_fnames[raw_idx]
+        fname = self._image_fnames[raw_idx][:-4] + '.txt'
+        fname = os.path.join(self._path, fname)
         ldmks = []
-        with self._open_file(fname) as f:
+        with open(fname, "r") as f:
             for line in f:
-                line = [int(l) for l in line[:-1].split(" ")]
+                line = [float(l) for l in line[:-1].split(" ")]
                 ldmks.append(line)
         return np.array(ldmks).astype(np.float32)
 

@@ -96,12 +96,12 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
 
-        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer1 = self._make_layer(block, 64, layers[0], stride=2)
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AvgPool2d(7, stride=1)
-        self.fc = nn.Linear(512 * block.expansion, out_channels)
+        self.fc = nn.Linear(512 * block.expansion * 4, out_channels)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -149,7 +149,7 @@ class ResNet(nn.Module):
         return x
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels=3, id_channels=80, exp_channels=32, tex_channels=3, 
+    def __init__(self, in_channels=3, id_channels=80, exp_channels=32, tex_channels=80, 
                 angle_channels=3, gamma_channels=27, trans_channels=3):
         super(Encoder, self).__init__()
         self.base = ResNet(Bottleneck, in_channels=in_channels, out_channels=512) 
