@@ -87,7 +87,9 @@ class BFM09ReconModel(BaseReconModel):
 
         id_coeff, exp_coeff, tex_coeff, angles, gamma, translation = self.split_coeffs(
             coeffs)
-
+        self.id_tensor = id_coeff
+        self.exp_tensor = exp_coeff
+        self.tex_tensor = tex_coeff
         vs = self.get_vs(id_coeff, exp_coeff)
 
         rotation = self.compute_rotation_matrix(angles)

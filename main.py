@@ -35,11 +35,13 @@ def train(train_loader, model, recon_model, optimizer, device):
                                      img_size=args.tar_size)
         id_reg_loss = losses.get_l2(recon_model.get_id_tensor())
         exp_reg_loss = losses.get_l2(recon_model.get_exp_tensor())
+        tex_reg_loss = losses.get_l2(recon_model.get_tex_tensor())
 
         loss = lm_loss_val*args.lm_loss_w + \
             id_reg_loss*args.id_reg_w + \
             exp_reg_loss*args.exp_reg_w + \
-            photo_loss_val*args.rgb_loss_w
+            photo_loss_val*args.rgb_loss_w + \
+            tex_reg_loss*args.tex_reg_w
 
         optimizer.zero_grad()
         loss.backward()
@@ -51,7 +53,7 @@ def train(train_loader, model, recon_model, optimizer, device):
             loss_str += 'photo_loss: %f\t' % photo_loss_val.detach().cpu().numpy()
             loss_str += 'id_reg_loss: %f\t' % id_reg_loss.detach().cpu().numpy()
             loss_str += 'exp_reg_loss: %f\t' % exp_reg_loss.detach().cpu().numpy()
-            # loss_str += 'tex_reg_loss: %f\t' % tex_reg_loss.detach().cpu().numpy()
+            loss_str += 'tex_reg_loss: %f\t' % tex_reg_loss.detach().cpu().numpy()
             print(loss_str)
 
 def fit(args):
