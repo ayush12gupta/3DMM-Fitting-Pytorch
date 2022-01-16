@@ -72,27 +72,27 @@ def train(train_loader, model, recon_model, optimizer, device):
             # if batch_idx%20==0:
             if batch_idx % 100 == 99:    # every 1000 mini-batches...
                 writer.add_scalar('Landmark loss',
-                                lm_loss / 1000,
+                                lm_loss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 lm_loss = 0.0
                 writer.add_scalar('ID loss',
-                                id_loss / 1000,
+                                id_loss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 id_loss = 0.0
                 writer.add_scalar('Expression loss',
-                                exp_loss / 1000,
+                                exp_loss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 exp_loss = 0.0
                 writer.add_scalar('Photo loss',
-                                photo_loss / 1000,
+                                photo_loss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 photo_loss = 0.0
                 writer.add_scalar('Texture loss',
-                                tex_loss / 1000,
+                                tex_loss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 tex_loss = 0.0
                 writer.add_scalar('Total Loss',
-                                tloss / 1000,
+                                tloss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 tloss = 0.0
                 im = np.array(rendered_img[0].detach().cpu())[:,:,::-1][:,:,1:]
