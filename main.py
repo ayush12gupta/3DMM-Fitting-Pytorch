@@ -63,7 +63,7 @@ def fit(args):
 
     dataset = ImageFolderDataset(args.data)
     train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.train_batch, shuffle=True, num_workers=args.num_workers)
-    model = Encoder()
+    model = Encoder().to(device)
     optimizer = optim.Adam(model.parameters(), 1e-3, betas=(0, 0.99), weight_decay=0.01)
     train(train_loader, model, recon_model, optimizer, device)
 
