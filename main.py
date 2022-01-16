@@ -27,7 +27,7 @@ def train(train_loader, model, recon_model, optimizer, device):
         lms_proj = pred_dict['lms_proj'][:,kp_idx,:]
 
         mask = rendered_img[:, :, :, 3].detach()
-
+        raw_imgs = (raw_imgs+1)*127.5
         photo_loss_val = losses.photo_loss(
             rendered_img[:, :, :, :3], raw_imgs, mask > 0)
 
