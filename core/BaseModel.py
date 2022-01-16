@@ -91,13 +91,17 @@ class BaseReconModel(nn.Module):
         return renderer
 
     def compute_norm(self, vs, tri, point_buf):
-        vert = list(np.array(vs.detach().cpu()[0]))
-        tri = np.array(tri.detach().cpu())
-        face_norm = np.array(eos.render.compute_face_normals(vert, tri))
-        v_norm = np.array(eos.render.compute_vertex_normals(vert, tri, face_norm))
-        v_norm = np.expand_dims(v_norm, 0)
-        v_norm = torch.tensor(v_norm, dtype=torch.float32, requires_grad=False, device=self.device)
-        return v_norm
+        v_norms = []
+        batch_num = vs.size()[0]
+        for i in range(batch_num):
+            vert = list(np.array(vs.detach().cpu()[i]))
+            trii = np.array(tri.detach().cpu())
+            face_norm = np.array(eos.render.compute_face_normals(vert, trii))
+            v_norm = np.array(eos.render.compute_vertex_normals(vert, trii, face_norm))
+            v_norms.append(v_norm)
+        # v_norm = np.expand_dims(v_norm, 0)
+        v_norms = torch.tensor(v_norms, dtype=torch.float32, requires_grad=False, device=self.device)
+        return v_norms
 
     def project_vs(self, vs):
         batchsize = vs.shape[0]
