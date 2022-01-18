@@ -4,15 +4,32 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
+from .arcface_torch.backbones import get_model
 import math
+from kornia.geometry import warp_affine
 
 # __all__ = ['ResNet', 'resnet50']
+def resize_n_crop(image, M, dsize=112):
+    # image: (b, c, h, w)
+    # M   :  (b, 2, 3)
+    return warp_affine(image, M, dsize=(dsize, dsize))
 
-def conv3x3(in_planes, out_planes, stride=1):
+def conv3x3(in_planes, out_planes, stride = 1, groups = 1, dilation = 1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
-                     padding=1, bias=False)
+                     padding=dilation, groups=groups, bias=False, dilation=dilation)
 
+def conv1x1(in_planes, out_planes, stride = 1, bias = False):
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=bias)
+
+def filter_state_dict(state_dict, remove_name='fc'):
+    new_state_dict = {}
+    for key in state_dict:
+        if remove_name in key:
+            continue
+        new_state_dict[key] = state_dict[key]
+    return new_state_dict
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -47,22 +64,42 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    expansion = 4
+    # Bottleneck in torchvision places the stride for downsampling at 3x3 convolution(self.conv2)
+    # while original implementation places the stride at the first 1x1 convolution(self.conv1)
+    # according to "Deep residual learning for image recognition"https://arxiv.org/abs/1512.03385.
+    # This variant is also known as ResNet V1.5 and improves accuracy according to
+    # https://ngc.nvidia.com/catalog/model-scripts/nvidia:resnet_50_v1_5_for_pytorch.
 
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
+    expansion: int = 4
+
+    def __init__(
+        self,
+        inplanes,
+        planes,
+        stride = 1,
+        downsample = None,
+        groups = 1,
+        base_width = 64,
+        dilation = 1,
+        norm_layer = None
+    ):
         super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4)
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+        width = int(planes * (base_width / 64.)) * groups
+        # Both self.conv2 and self.downsample layers downsample the input when stride != 1
+        self.conv1 = conv1x1(inplanes, width)
+        self.bn1 = norm_layer(width)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation)
+        self.bn2 = norm_layer(width)
+        self.conv3 = conv1x1(width, planes * self.expansion)
+        self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
 
     def forward(self, x):
-        residual = x
+        identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
@@ -76,9 +113,9 @@ class Bottleneck(nn.Module):
         out = self.bn3(out)
 
         if self.downsample is not None:
-            residual = self.downsample(x)
+            identity = self.downsample(x)
 
-        out += residual
+        out += identity
         out = self.relu(out)
 
         return out
@@ -96,20 +133,19 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
 
-        self.layer1 = self._make_layer(block, 64, layers[0], stride=2)
+        self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = nn.AvgPool2d(7, stride=1)
-        self.fc = nn.Linear(512 * block.expansion * 4, out_channels)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, out_channels)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -149,42 +185,49 @@ class ResNet(nn.Module):
         return x
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels=3, id_channels=80, exp_channels=32, tex_channels=80, 
-                angle_channels=3, gamma_channels=27, trans_channels=3):
+    def __init__(self, in_channels, init_path, use_last_fc=False):
+        last_dim = 2048
         super(Encoder, self).__init__()
-        self.base = ResNet(Bottleneck, in_channels=in_channels, out_channels=512) 
-        self.idEncoder = nn.Sequential(
-                            nn.Linear(512, 256),
-                            nn.Linear(256, id_channels)
-                        )
-        self.expEncoder = nn.Sequential(
-                            nn.Linear(512, 256),
-                            nn.Linear(256, exp_channels)
-                        )
-        self.texEncoder = nn.Sequential(
-                            nn.Linear(512, 256),
-                            nn.Linear(256, tex_channels)
-                        )
-        self.angleEncoder = nn.Sequential(
-                            nn.Linear(512, 256),
-                            nn.Linear(256, angle_channels)
-                        )
-        self.gammaEncoder = nn.Sequential(
-                            nn.Linear(512, 256),
-                            nn.Linear(256, gamma_channels)
-                        )
-        self.transEncoder = nn.Sequential(
-                            nn.Linear(512, 256),
-                            nn.Linear(256, trans_channels)
-                        )
+        self.base = ResNet(Bottleneck, in_channels=in_channels, out_channels=last_dim, include_top=use_last_fc)  # resnet50
+        state_dict = filter_state_dict(torch.load(init_path, map_location='cpu'))
+        self.base.load_state_dict(state_dict)
+        if not use_last_fc:
+            self.final_layers = nn.ModuleList([
+                conv1x1(last_dim, 80, bias=True), # id layer
+                conv1x1(last_dim, 64, bias=True), # exp layer
+                conv1x1(last_dim, 80, bias=True), # tex layer
+                conv1x1(last_dim, 3, bias=True),  # angle layer
+                conv1x1(last_dim, 27, bias=True), # gamma layer
+                conv1x1(last_dim, 2, bias=True),  # tx, ty
+                conv1x1(last_dim, 1, bias=True)   # tz
+            ])
+            for m in self.final_layers:
+                nn.init.constant_(m.weight, 0.)
+                nn.init.constant_(m.bias, 0.)
     
     def forward(self, x):
         x = self.base(x)
-        id = self.idEncoder(x)
-        exp = self.expEncoder(x)
-        tex = self.texEncoder(x)
-        angle = self.angleEncoder(x)
-        gamma = self.gammaEncoder(x)
-        translations = self.transEncoder(x)
-        coeffs = torch.cat([id, exp, tex, angle, gamma, translations], dim=1)
-        return coeffs
+        output = []
+        for layer in self.final_layers:
+            output.append(layer(x))
+        x = torch.flatten(torch.cat(output, dim=1), 1)
+        return x
+
+class RecogNetWrapper(nn.Module):
+    def __init__(self, net_recog, pretrained_path=None, input_size=112):
+        super(RecogNetWrapper, self).__init__()
+        net = get_model(name=net_recog, fp16=False)
+        if pretrained_path:
+            state_dict = torch.load(pretrained_path, map_location='cpu')
+            net.load_state_dict(state_dict)
+            print("loading pretrained net_recog %s from %s" %(net_recog, pretrained_path))
+        for param in net.parameters():
+            param.requires_grad = False
+        self.net = net
+        self.preprocess = lambda x: 2 * x - 1
+        self.input_size=input_size
+        
+    def forward(self, image, M):
+        image = self.preprocess(resize_n_crop(image, M, self.input_size))
+        id_feature = F.normalize(self.net(image), dim=-1, p=2)
+        return id_feature

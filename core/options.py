@@ -54,6 +54,8 @@ class BaseOptions():
                                  help='training batch size in dataloder')
         self.parser.add_argument('--res_folder', type=str, required=True,
                                  help='output path for the image')
+        self.parser.add_argument('--checkpoint_dir', type=str, required=True,
+                                 help='checkpoint path for backbone and arcface')
 
         self.initialized = True
 

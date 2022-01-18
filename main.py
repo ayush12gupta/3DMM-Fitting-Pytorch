@@ -19,7 +19,6 @@ from torch.utils.tensorboard import SummaryWriter
 writer = SummaryWriter('./log')
 
 
-
 def train(train_loader, model, recon_model, optimizer, device):
     kp_idx = recon_model.kp_idx[0]
     lm_weights = utils.get_lm_weights(device)
@@ -95,15 +94,15 @@ def train(train_loader, model, recon_model, optimizer, device):
                                 tloss / 100,
                                 epoch * len(train_loader) + batch_idx)
                 tloss = 0.0
-                im = np.array(rendered_img[0].detach().cpu())[:,:,::-1][:,:,1:]
-                raw_im = np.array(raw_imgs[0].detach().cpu())[::-1,:,:]
-                raw_im = np.transpose(raw_im, (1, 2, 0))
+                im = np.array(rendered_img.detach().cpu())[:,:,:,::-1][:,:,:,1:]
+                raw_im = np.array(raw_imgs.detach().cpu())[:,::-1,:,:]
+                raw_im = np.transpose(raw_im, (0, 2, 3, 1))
                 mask = mask.detach().cpu()
                 ma = np.stack([mask, mask, mask], axis=3)
                 raw_im[ma>0] = im[ma>0]
-                raw_im = np.transpose(raw_im, (0, 3, 1, 2))
-                raw_im = [torch.tensor(r.copy()) for r in raw_im]
-                img_grid = torchvision.utils.make_grid(raw_im, nrow=4)
+                raw_im = np.transpose(raw_imm, (0, 3, 1, 2))
+                raw_imm = [torch.tensor(r.copy()) for r in raw_imm]
+                img_grid = torchvision.utils.make_grid(raw_imm, nrow=4)
                 writer.add_image('Images', img_grid)
                 # cv2.imwrite("test.png", im)
                 # cv2.imwrite("mask.png", ma[:,:,:]*255)
@@ -125,7 +124,7 @@ def fit(args):
 
     dataset = ImageFolderDataset(args.data)
     train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.train_batch, shuffle=True, num_workers=args.num_workers)
-    model = Encoder().to(device)
+    model = Encoder(3, args.checkpoint_dir + '/resnet50-0676ba61.pth').to(device)
     optimizer = optim.Adam(model.parameters(), 1e-4, betas=(0, 0.99), weight_decay=0.01)
     train(train_loader, model, recon_model, optimizer, device)
 
